@@ -33,6 +33,22 @@ class BluetoothDevice {
     return response;
   }
 
+  /// Requests different MTU size
+  Future requestMtu(int mtuSize) async {
+    var response = FlutterBlue.instance._mtuChangedChannel
+        .receiveBroadcastStream()
+        .first;
+
+    var request = protos.RequestMtuRequest.create()
+      ..remoteId = id.toString()
+      ..mtuSize = mtuSize
+      ..success = false;
+    await FlutterBlue.instance._channel
+        .invokeMethod('requestMtu', request.writeToBuffer());
+
+    return response;
+  }
+
   /// Returns a list of Bluetooth GATT services offered by the remote device
   /// This function requires that discoverServices has been completed for this device
   Future<List<BluetoothService>> get services {
@@ -231,8 +247,18 @@ class BluetoothDevice {
   /// Indicates whether the Bluetooth Device can send a write without response
   Future<bool> get canSendWriteWithoutResponse =>
       new Future.error(new UnimplementedError());
+
+  Future requestConnectionPriority(ConnectionPriority priority) async {
+    var request = protos.RequestConnectionPriorityRequest.create()
+        ..remoteId = id.toString()
+        ..priority = priority.index
+        ..success = false;
+
+    await FlutterBlue.instance._channel.invokeMethod('RequestConnectionPriority', request.writeToBuffer());
+  }
 }
 
+enum ConnectionPriority { balanced, high, low_power }
 enum BluetoothDeviceType { unknown, classic, le, dual }
 
 enum BluetoothDeviceState { disconnected, connecting, connected, disconnecting }

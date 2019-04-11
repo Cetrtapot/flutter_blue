@@ -29,6 +29,9 @@ import android.os.Build;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -38,8 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.EventChannel.EventSink;
 import io.flutter.plugin.common.EventChannel.StreamHandler;
@@ -64,6 +65,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     private final EventChannel stateChannel;
     private final EventChannel scanResultChannel;
     private final EventChannel servicesDiscoveredChannel;
+    private final EventChannel requestMtuChannel;
     private final EventChannel characteristicReadChannel;
     private final EventChannel descriptorReadChannel;
     private final BluetoothManager mBluetoothManager;
@@ -89,6 +91,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         this.stateChannel = new EventChannel(registrar.messenger(), NAMESPACE+"/state");
         this.scanResultChannel = new EventChannel(registrar.messenger(), NAMESPACE+"/scanResult");
         this.servicesDiscoveredChannel = new EventChannel(registrar.messenger(), NAMESPACE+"/servicesDiscovered");
+        this.requestMtuChannel = new EventChannel(registrar.messenger(), NAMESPACE+"/mtuChanged");
         this.characteristicReadChannel = new EventChannel(registrar.messenger(), NAMESPACE+"/characteristicRead");
         this.descriptorReadChannel = new EventChannel(registrar.messenger(), NAMESPACE+"/descriptorRead");
         this.mBluetoothManager = (BluetoothManager) r.activity().getSystemService(Context.BLUETOOTH_SERVICE);
@@ -97,6 +100,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         stateChannel.setStreamHandler(stateHandler);
         scanResultChannel.setStreamHandler(scanResultsHandler);
         servicesDiscoveredChannel.setStreamHandler(servicesDiscoveredHandler);
+        requestMtuChannel.setStreamHandler(mtuChangedHandler);
         characteristicReadChannel.setStreamHandler(characteristicReadHandler);
         descriptorReadChannel.setStreamHandler(descriptorReadHandler);
     }
@@ -480,6 +484,52 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 result.success(null);
                 break;
             }
+            
+            case "requestMtu":
+            {
+                byte[] data = call.arguments();
+                Protos.RequestMtuRequest request;
+                try {
+                    request = Protos.RequestMtuRequest.newBuilder().mergeFrom(data).build();
+                } catch (InvalidProtocolBufferException e) {
+                    result.error("RuntimeException", e.getMessage(), e);
+                    break;
+                }
+                BluetoothGatt gattServer;
+                try {
+                    gattServer = locateGatt(request.getRemoteId());
+                } catch(Exception e) {
+                    result.error("request_mtu_error", e.getMessage(), null);
+                    return;
+                }
+                if(gattServer.requestMtu(request.getMtuSize())) {
+                    result.success(null);
+                } else {
+                    result.error("request_mtu_error", "unknown reason", null);
+                }
+                break;                
+            }
+
+            case "RequestConnectionPriority": 
+            {
+                byte[] data = call.arguments();
+                Protos.RequestConnectionPriorityRequest request;
+                try {
+                    request = Protos.RequestConnectionPriorityRequest.newBuilder().mergeFrom(data).build();
+                } catch (InvalidProtocolBufferException e) {
+                    result.error("RuntimeException", e.getMessage(), e);
+                    break;
+                }
+                BluetoothGatt gattServer;
+                try {
+                    gattServer = locateGatt(request.getRemoteId());
+                } catch(Exception e) {
+                    result.error("set_notification_error", e.getMessage(), null);
+                    return;
+                }                
+                result.success(gattServer.requestConnectionPriority(request.getPriority()));
+                break;
+            }
 
             default:
             {
@@ -724,6 +774,19 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         }
     };
 
+    private EventSink mtuChangedSink;
+    private final StreamHandler mtuChangedHandler = new StreamHandler() {
+        @Override
+        public void onListen(Object o, EventChannel.EventSink eventSink) {
+            mtuChangedSink = eventSink;
+        }
+
+        @Override
+        public void onCancel(Object o) {
+            mtuChangedSink = null;
+        }
+    };
+
     private EventSink characteristicReadSink;
     private final StreamHandler characteristicReadHandler = new StreamHandler() {
         @Override
@@ -869,6 +932,9 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         @Override
         public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
             log(LogLevel.DEBUG, "[onMtuChanged] mtu: " + mtu + " status: " + status);
+            if(mtuChangedSink != null) {
+                mtuChangedSink.success(true);
+            }
         }
     };
 

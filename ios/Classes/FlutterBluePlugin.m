@@ -104,6 +104,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     } else {
       result(@(NO));
     }
+  } else if([@"requestMtu" isEqualToString:call.method]) {
+    result(@(YES));
   } else if([@"isOn" isEqualToString:call.method]) {
     if(self.centralManager.state == CBManagerStatePoweredOn) {
       result(@(YES));

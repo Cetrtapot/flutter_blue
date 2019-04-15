@@ -742,6 +742,24 @@ typedef GPB_ENUM(ProtosRequestMtuRequest_FieldNumber) {
 
 @end
 
+#pragma mark - ProtosRequestConnectionPriorityRequest
+
+typedef GPB_ENUM(ProtosRequestConnectionPriorityRequest_FieldNumber) {
+  ProtosRequestConnectionPriorityRequest_FieldNumber_RemoteId = 1,
+  ProtosRequestConnectionPriorityRequest_FieldNumber_Priority = 2,
+  ProtosRequestConnectionPriorityRequest_FieldNumber_Success = 3,
+};
+
+@interface ProtosRequestConnectionPriorityRequest : GPBMessage
+
+@property(nonatomic, readwrite, copy, null_resettable) NSString *remoteId;
+
+@property(nonatomic, readwrite) int32_t priority;
+
+@property(nonatomic, readwrite) BOOL success;
+
+@end
+
 NS_ASSUME_NONNULL_END
 
 CF_EXTERN_C_END

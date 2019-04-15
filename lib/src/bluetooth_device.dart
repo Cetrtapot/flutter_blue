@@ -35,6 +35,10 @@ class BluetoothDevice {
 
   /// Requests different MTU size
   Future requestMtu(int mtuSize) async {
+    if (Platform.isIOS) {
+      return true;
+    }
+
     var response = FlutterBlue.instance._mtuChangedChannel
         .receiveBroadcastStream()
         .first;

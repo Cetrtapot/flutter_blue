@@ -4,6 +4,7 @@
 
 library flutter_blue;
 
+import 'dart:io';
 import 'dart:async';
 
 import 'package:collection/collection.dart';
